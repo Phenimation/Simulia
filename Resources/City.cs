@@ -1,7 +1,7 @@
 public class City
 {
     public string? Name { get; set; }
-    public CitizensStats? CitizensStats { get; set; }
+    public CitizensStats CitizensStats { get; set; } = new CitizensStats();
     public NaturalsResources? NaturalsResources { get; set; }
     public Society? Society { get; set; }
     public Research? Research { get; set; }

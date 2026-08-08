@@ -1,17 +1,20 @@
 public class CitizensStats
 {
     public int Population { get; set; } = 100;
-
-    public class AgeRepartition
+    public List<(int numberOfCitizens, double ratioMaxDeath, double ratioMaxReproduct)> ageRepartition = new List<(int numberOfCitizens, double rationMaxDeath, double ratioMaxReproduct)>()
     {
-        public int Children { get; set; } = 20;
-        public int Teenagers { get; set; } = 20;
-        public int Adults { get; set; } = 40;
-        public int Elders { get; set; } = 20;
-    }
+        (10, 0, 0),//0-10
+        (20, 5, 10),//10-20
+        (30, 10, 30),//20-30
+        (20, 15, 50),//30-40
+        (10, 20, 30),//40-50
+        (10, 30, 10),//50-60
+        (0, 45, 0)//60+
+    };
     public int Unemployed { get; set; } = 100;
     public int Workers { get; set; } = 0;
     public int Scientists { get; set; } = 0;
     public int Soldiers { get; set; } = 0;
     public int Ingeniers { get; set; } = 0;
 }
+
