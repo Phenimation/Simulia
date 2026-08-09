@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Data;
+using System.Runtime.CompilerServices;
 
 Random rng = new();
 
@@ -10,17 +11,23 @@ string defaultName = "Ferdonia";
 int populationBooster = 10;
 int deathBooster = 0;
 int maxDeathBooster = 10;
-double foodPerWorker = 0.5;
+double maxFoodPerWorker = 1;
 int stockFood =0;
+string lastFoodAction = "";
+int surplusFoodCounter = 0;
+(int stock, int deficit) stockAndDeficitCounter= (0,0);
+int foodVigilanceLevel =0;
+
 City city = new City();
 
-int minFood = 0;
 
 List<int> populationHistory = new();
-List<int> foodHistory = new();
+List<double> foodHistory = new();
 List<int> stockFoodHistory = new();
 List<int> deathBoosterHistory = new();
 List<int> populationBoosterHistory = new();
+List<int> foodVigilanceLevelHistory = new();
+List<int> workersHistory = new();
 
 Start();
 
@@ -37,17 +44,121 @@ void Start()
     while (turn <= targetTurn)
     {
         DevTriggerEvent();
-        DisplayCityInfos();
         PopulationManagement();
+        ReactionManagement();
         RessourcesManagement();
         populationHistory.Add(city.CitizensStats.Population);
         foodHistory.Add(city.NaturalsResources!.Food);
         stockFoodHistory.Add(stockFood);
         deathBoosterHistory.Add(deathBooster);
         populationBoosterHistory.Add(populationBooster);
+        foodVigilanceLevelHistory.Add(foodVigilanceLevel);
+        workersHistory.Add(city.CitizensStats.EmployementRatioAndEmployed[0].numberOfEmployed);
         turn++;
     }
     DisplayGraph();
+    DisplayCityInfos();
+}
+
+void ReactionManagement()
+{
+    FoodReactionCounter();
+    FoodVigilanceEvaluator();
+    FoodReaction();
+}
+
+void FoodReaction()
+{
+    if ((6<=foodVigilanceLevel) && (8>foodVigilanceLevel))
+    {
+        var newNumberOfWorkers = city.CitizensStats.EmployementRatioAndEmployed[0];
+        newNumberOfWorkers.numberOfEmployed+=LaunchCampaignOfRecruitment(1);
+        city.CitizensStats.EmployementRatioAndEmployed[0]= newNumberOfWorkers;
+    }
+    else if (foodVigilanceLevel>=8 && foodVigilanceLevel < 10)
+    {
+        var newNumberOfWorkers = city.CitizensStats.EmployementRatioAndEmployed[0];
+        newNumberOfWorkers.numberOfEmployed+=LaunchCampaignOfRecruitment(2);
+        city.CitizensStats.EmployementRatioAndEmployed[0]= newNumberOfWorkers;
+    }
+    else if (foodVigilanceLevel>10)
+    {
+        LaunchEmergencyReaffectation("Workers");
+    }
+}
+
+int LaunchCampaignOfRecruitment(int level)
+{
+    int min = 0;
+    int max = 1;
+    if (level ==1)
+    {
+        min = 5;
+        max = 15;
+    }
+    else if (level == 2)
+    {
+        min = 15;
+        max = 40;
+    }
+    int newEmployed = rng.Next(min, max)/100*city.CitizensStats.Unemployed;
+    city.CitizensStats.Unemployed -= newEmployed;
+    return newEmployed;
+}
+
+void LaunchEmergencyReaffectation(string typeNeed)
+{
+    switch (typeNeed)
+    {
+        case "Workers":
+        city.CitizensStats.EmployementRatioAndEmployed[0] = (40,70, city.CitizensStats.EmployementRatioAndEmployed[0].numberOfEmployed);
+        for (int i =1; i<4;i++)
+        {
+            city.CitizensStats.EmployementRatioAndEmployed[i] = (5,10, city.CitizensStats.EmployementRatioAndEmployed[i].numberOfEmployed);
+        }
+        break;
+
+        default:
+        break;
+    }
+}
+
+void FoodVigilanceEvaluator()
+{
+    if (stockAndDeficitCounter.stock>3){foodVigilanceLevel++;}
+    if (stockAndDeficitCounter.deficit>0){foodVigilanceLevel++;}
+}
+
+void FoodReactionCounter()
+{
+    switch(lastFoodAction)
+    {
+
+        case "deficit":
+        stockAndDeficitCounter.deficit++;
+        if (surplusFoodCounter >0){surplusFoodCounter =0;}
+        break;
+
+        case "stock":
+        stockAndDeficitCounter.stock++;
+        if (surplusFoodCounter >0){surplusFoodCounter =0;}
+        break;
+
+        case "surplus":
+        if (foodVigilanceLevel>0)
+        {
+            foodVigilanceLevel--;
+        }
+        if (stockAndDeficitCounter != (0,0))
+        {
+            surplusFoodCounter++;
+            if (surplusFoodCounter >= 4) {stockAndDeficitCounter = (0,0);}
+        }
+        break;
+
+        default:
+        break;
+    }
 }
 
 void RessourcesManagement()
@@ -64,9 +175,9 @@ void UseResources()
 void ConsumeFood()
 {
     int population = city.CitizensStats.Population;
-    int food = city.NaturalsResources!.Food;
-    int difference = food*10-population;
-    if (difference >0) 
+    double food = city.NaturalsResources!.Food;
+    int difference = (int)(food*10)-population;
+    if (difference>0) 
     {
         stockFood+=(int)(0.98*difference);
         if (deathBooster > 0)
@@ -77,6 +188,7 @@ void ConsumeFood()
         {
             populationBooster +=1;
         }
+        lastFoodAction = "surplus";
     }
     else if (difference < 0)
     {
@@ -84,6 +196,7 @@ void ConsumeFood()
         {
             difference +=1;
             stockFood-=1;
+            lastFoodAction = "stock";
         }
         if (difference<0)
         {
@@ -95,6 +208,7 @@ void ConsumeFood()
             {
                 populationBooster-=1;
             }
+            lastFoodAction = "deficit";
         }
     }
 
@@ -102,20 +216,18 @@ void ConsumeFood()
 
 void GetResources()
 {
-    city.NaturalsResources!.Food = GetFood(city.CitizensStats.EmployementRatioAndEmployed[0].numberOfEmployed, foodPerWorker);
+    city.NaturalsResources!.Food = GetFood(city.CitizensStats.EmployementRatioAndEmployed[0].numberOfEmployed, maxFoodPerWorker);
 }
 
-int GetFood(int numOfWorkers, double foodPerWorker)
+double GetFood(int numOfWorkers, double maxFoodPerWorker)
 {
+    double foodProduct = 0;
 
-    int maxFood = (int)(numOfWorkers * foodPerWorker);
-
-    if (minFood >= maxFood)
+    for (int i = 0; i < numOfWorkers; i++)
     {
-        maxFood = minFood + 1;
+        double foodProductByTheWorker = rng.NextDouble() * maxFoodPerWorker;
+        foodProduct += foodProductByTheWorker;
     }
-
-    int foodProduct = rng.Next(minFood, maxFood);
 
     return foodProduct;
 }
@@ -241,7 +353,7 @@ string? SelectName()
 
 void DevTriggerEvent()
 {
-    
+
 }
 
 void DisplayCityInfos()
@@ -383,4 +495,32 @@ void DisplayGraph()
     plotPopulationBooster.YLabel("Population Booster");
     plotPopulationBooster.Title("Population Booster evolution");
     plotPopulationBooster.SavePng("C:\\Users\\User\\Desktop\\C# ALL\\Simulia\\Graphs\\population_booster.png", 1000, 600);
+
+    double[] xsFoodVigilanceLevel = Enumerable.Range(1, foodVigilanceLevelHistory.Count)
+                         .Select(x => (double)x)
+                         .ToArray();
+    double[] ysFoodVigilanceLevel = foodVigilanceLevelHistory
+        .Select(x => (double)x)
+        .ToArray();
+
+    ScottPlot.Plot plotFoodVigilanceLevel = new();
+    plotFoodVigilanceLevel.Add.Scatter(xsFoodVigilanceLevel, ysFoodVigilanceLevel);
+    plotFoodVigilanceLevel.XLabel("Turn");
+    plotFoodVigilanceLevel.YLabel("Food Vigilance Level");
+    plotFoodVigilanceLevel.Title("Food Vigilance Level evolution");
+    plotFoodVigilanceLevel.SavePng("C:\\Users\\User\\Desktop\\C# ALL\\Simulia\\Graphs\\food_vigilance_level.png", 1000, 600);
+
+    double[] xsWorkers = Enumerable.Range(1, workersHistory.Count)
+                         .Select(x => (double)x)
+                         .ToArray();
+    double[] ysWorkers = workersHistory
+        .Select(x => (double)x)
+        .ToArray();
+
+    ScottPlot.Plot plotWorkers = new();
+    plotWorkers.Add.Scatter(xsWorkers, ysWorkers);
+    plotWorkers.XLabel("Turn");
+    plotWorkers.YLabel("Workers");
+    plotWorkers.Title("Workers evolution");
+    plotWorkers.SavePng("C:\\Users\\User\\Desktop\\C# ALL\\Simulia\\Graphs\\workers.png", 1000, 600);
 }
