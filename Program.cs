@@ -4,11 +4,23 @@ Random rng = new();
 
 int lifeExpextancy = 30;
 int turn =1;
-int targetTurn = 50;
+int targetTurn = 200;
 bool wantToChoseName = false;
 string defaultName = "Ferdonia";
-int populationBooster = 8;
+int populationBooster = 10;
+int deathBooster = 0;
+int maxDeathBooster = 10;
+double foodPerWorker = 0.5;
+int stockFood =0;
 City city = new City();
+
+int minFood = 0;
+
+List<int> populationHistory = new();
+List<int> foodHistory = new();
+List<int> stockFoodHistory = new();
+List<int> deathBoosterHistory = new();
+List<int> populationBoosterHistory = new();
 
 Start();
 
@@ -24,10 +36,88 @@ void Start()
     }
     while (turn <= targetTurn)
     {
+        DevTriggerEvent();
         DisplayCityInfos();
         PopulationManagement();
+        RessourcesManagement();
+        populationHistory.Add(city.CitizensStats.Population);
+        foodHistory.Add(city.NaturalsResources!.Food);
+        stockFoodHistory.Add(stockFood);
+        deathBoosterHistory.Add(deathBooster);
+        populationBoosterHistory.Add(populationBooster);
         turn++;
     }
+    DisplayGraph();
+}
+
+void RessourcesManagement()
+{
+    UseResources();
+    GetResources();
+}
+
+void UseResources()
+{
+    ConsumeFood();
+}
+
+void ConsumeFood()
+{
+    int population = city.CitizensStats.Population;
+    int food = city.NaturalsResources!.Food;
+    int difference = food*10-population;
+    if (difference >0) 
+    {
+        stockFood+=(int)(0.98*difference);
+        if (deathBooster > 0)
+        {
+            deathBooster-=1;
+        }
+        else
+        {
+            populationBooster +=1;
+        }
+    }
+    else if (difference < 0)
+    {
+        while (difference<0 && stockFood>0)
+        {
+            difference +=1;
+            stockFood-=1;
+        }
+        if (difference<0)
+        {
+            if (deathBooster<maxDeathBooster)
+            {
+                deathBooster+=1;
+            }
+            else if (populationBooster>0)
+            {
+                populationBooster-=1;
+            }
+        }
+    }
+
+}
+
+void GetResources()
+{
+    city.NaturalsResources!.Food = GetFood(city.CitizensStats.EmployementRatioAndEmployed[0].numberOfEmployed, foodPerWorker);
+}
+
+int GetFood(int numOfWorkers, double foodPerWorker)
+{
+
+    int maxFood = (int)(numOfWorkers * foodPerWorker);
+
+    if (minFood >= maxFood)
+    {
+        maxFood = minFood + 1;
+    }
+
+    int foodProduct = rng.Next(minFood, maxFood);
+
+    return foodProduct;
 }
 
 void PopulationManagement()
@@ -105,7 +195,7 @@ void Death()
         int ratioTemp = rng.Next(0, (int)Math.Round(ratioMaxDeath * 10));
         double ratioToDeath = ratioTemp / 10.0;
 
-        int newNumberOfCitizens = (int)(numberOfCitizens - numberOfCitizens * ((int)Math.Round(ratioToDeath) / 100.0));
+        int newNumberOfCitizens = Math.Max(0, (int)(numberOfCitizens - numberOfCitizens * (ratioToDeath / 100.0 + deathBooster / 100.0)));
 
         double newRatioMaxDeath;
         if (ratioMaxDeath<20){newRatioMaxDeath = ratioMaxDeath+5;}
@@ -147,6 +237,11 @@ string? SelectName()
     Console.Write("Choose the name of the city : ");
     string chosedName = Console.ReadLine() ?? string.Empty;
     return chosedName;
+}
+
+void DevTriggerEvent()
+{
+    
 }
 
 void DisplayCityInfos()
@@ -208,4 +303,84 @@ void DisplayCityInfos()
     Console.WriteLine($"Turn: {turn}");
 
     Console.WriteLine($"+-------------------------------+");
+
+}
+void DisplayGraph()
+{
+    double[] xs = Enumerable.Range(1, populationHistory.Count)
+                         .Select(x => (double)x)
+                         .ToArray();
+
+    double[] ys = populationHistory
+        .Select(x => (double)x)
+        .ToArray();
+
+    ScottPlot.Plot plot = new();
+
+    plot.Add.Scatter(xs, ys);
+
+    plot.XLabel("Turn");
+    plot.YLabel("Population");
+    plot.Title("Population evolution");
+
+    plot.SavePng("C:\\Users\\User\\Desktop\\C# ALL\\Simulia\\Graphs\\population.png", 1000, 600);
+
+    double[] xsFood = Enumerable.Range(1, foodHistory.Count)
+                         .Select(x => (double)x)
+                         .ToArray();
+    double[] ysFood = foodHistory
+        .Select(x => (double)x)
+        .ToArray();
+    
+    ScottPlot.Plot plotFood = new();
+
+    plotFood.Add.Scatter(xsFood, ysFood);
+
+    plotFood.XLabel("Turn");
+    plotFood.YLabel("Food");
+    plotFood.Title("Food evolution");
+
+    plotFood.SavePng("C:\\Users\\User\\Desktop\\C# ALL\\Simulia\\Graphs\\food.png", 1000, 600);
+
+    double[] xsStockFood = Enumerable.Range(1, stockFoodHistory.Count)
+                         .Select(x => (double)x)
+                         .ToArray();
+    double[] ysStockFood = stockFoodHistory
+        .Select(x => (double)x)
+        .ToArray();
+
+    ScottPlot.Plot plotStockFood = new();
+    plotStockFood.Add.Scatter(xsStockFood, ysStockFood);
+    plotStockFood.XLabel("Turn");
+    plotStockFood.YLabel("Stock Food");
+    plotStockFood.Title("Stock Food evolution");
+    plotStockFood.SavePng("C:\\Users\\User\\Desktop\\C# ALL\\Simulia\\Graphs\\stock_food.png", 1000, 600);
+
+    double[] xsDeathBooster = Enumerable.Range(1, deathBoosterHistory.Count)
+                         .Select(x => (double)x)
+                         .ToArray();
+    double[] ysDeathBooster = deathBoosterHistory
+        .Select(x => (double)x)
+        .ToArray();
+
+    ScottPlot.Plot plotDeathBooster = new();
+    plotDeathBooster.Add.Scatter(xsDeathBooster, ysDeathBooster);
+    plotDeathBooster.XLabel("Turn");
+    plotDeathBooster.YLabel("Death Booster");
+    plotDeathBooster.Title("Death Booster evolution");
+    plotDeathBooster.SavePng("C:\\Users\\User\\Desktop\\C# ALL\\Simulia\\Graphs\\death_booster.png", 1000, 600);
+
+    double[] xsPopulationBooster = Enumerable.Range(1, populationBoosterHistory.Count)
+                         .Select(x => (double)x)
+                         .ToArray();
+    double[] ysPopulationBooster = populationBoosterHistory
+        .Select(x => (double)x)
+        .ToArray();
+
+    ScottPlot.Plot plotPopulationBooster = new();
+    plotPopulationBooster.Add.Scatter(xsPopulationBooster, ysPopulationBooster);
+    plotPopulationBooster.XLabel("Turn");
+    plotPopulationBooster.YLabel("Population Booster");
+    plotPopulationBooster.Title("Population Booster evolution");
+    plotPopulationBooster.SavePng("C:\\Users\\User\\Desktop\\C# ALL\\Simulia\\Graphs\\population_booster.png", 1000, 600);
 }

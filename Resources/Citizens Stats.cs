@@ -15,9 +15,9 @@ public class CitizensStats
     public List<(int min, int max, int numberOfEmployed)> EmployementRatioAndEmployed = new List<(int min, int max, int numberOfEmployed)>()
         {
             //public double Unemployed { get; set; } = 0.1;
-            (20, 45, 0),//Workers
-            (10, 35, 0),//Scientists
-            (15, 25, 0),//Soldiers
+            (25, 40, 0),//Workers
+            (10, 25, 0),//Scientists
+            (10, 20, 0),//Soldiers
             (5, 15, 0)//Ingeniers
 
         };
