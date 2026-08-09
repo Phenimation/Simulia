@@ -12,9 +12,15 @@ public class CitizensStats
         (0, 45, 0)//60+
     };
     public int Unemployed { get; set; } = 100;
-    public int Workers { get; set; } = 0;
-    public int Scientists { get; set; } = 0;
-    public int Soldiers { get; set; } = 0;
-    public int Ingeniers { get; set; } = 0;
+    public List<(int min, int max, int numberOfEmployed)> EmployementRatioAndEmployed = new List<(int min, int max, int numberOfEmployed)>()
+        {
+            //public double Unemployed { get; set; } = 0.1;
+            (20, 45, 0),//Workers
+            (10, 35, 0),//Scientists
+            (15, 25, 0),//Soldiers
+            (5, 15, 0)//Ingeniers
+
+        };
+    
 }
 

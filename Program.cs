@@ -7,7 +7,7 @@ int turn =1;
 int targetTurn = 50;
 bool wantToChoseName = false;
 string defaultName = "Ferdonia";
-
+int populationBooster = 8;
 City city = new City();
 
 Start();
@@ -33,6 +33,45 @@ void Start()
 void PopulationManagement()
 {
     PopulationGrowth();
+    GetAJob();
+}
+
+void GetAJob()
+{
+    var population = city.CitizensStats?.Population ?? 0;
+    var employementRatio = city.CitizensStats?.EmployementRatioAndEmployed;
+    List<int> orderJobs = new();
+    int chosedNum;
+    while(orderJobs.Count != employementRatio!.Count)
+    {
+        do
+        {
+            chosedNum = rng.Next(0, employementRatio!.Count);
+            if (!orderJobs.Contains(chosedNum)){orderJobs.Add(chosedNum);}
+        }while(!orderJobs.Contains(chosedNum));
+        
+    }
+    int totalProportion = 0;
+    
+    foreach (int actualJobIndex in orderJobs)
+    {
+        bool correctPart = false;
+        int proportionInPopulation;
+        do
+        {
+            proportionInPopulation = rng.Next(employementRatio[actualJobIndex].min, employementRatio[actualJobIndex].max);
+            if (totalProportion + proportionInPopulation <= 100)
+            {
+                correctPart = true;
+            }
+        } while (!correctPart);
+
+        totalProportion += proportionInPopulation;
+        int numberOfEmployed = (int)Math.Round((double)population * proportionInPopulation / 100.0);
+        city.CitizensStats!.EmployementRatioAndEmployed[actualJobIndex] = (employementRatio![actualJobIndex].min, employementRatio[actualJobIndex].max, numberOfEmployed);
+    }
+
+    city.CitizensStats!.Unemployed = Math.Max(0, (int)Math.Round((double)population * (100 - totalProportion) / 100.0));
 }
 
 void PopulationGrowth()
@@ -51,7 +90,7 @@ void Reproduction()
         int ratioTemp = rng.Next(0, (int)Math.Round(city.CitizensStats.ageRepartition[i].ratioMaxReproduct * 10));
         double ratioToReproduct = ratioTemp / 10.0;
 
-        newNumberOfCitizens += (int)(city.CitizensStats.ageRepartition[i].numberOfCitizens * ((int)Math.Round(ratioToReproduct) / 100.0))+8;
+        newNumberOfCitizens += (int)(city.CitizensStats.ageRepartition[i].numberOfCitizens * ((int)Math.Round(ratioToReproduct) / 100.0))+ populationBooster;
     }
     city.CitizensStats?.ageRepartition[0] = (newNumberOfCitizens, city.CitizensStats.ageRepartition[0].ratioMaxDeath, city.CitizensStats.ageRepartition[0].ratioMaxReproduct);
 }
@@ -124,10 +163,10 @@ void DisplayCityInfos()
         Console.WriteLine($"Age group {i * 10}-{(i + 1) * 10}: {numberOfCitizens} citizens, Max Death Ratio: {ratioMaxDeath}, Max Reproduction Ratio: {ratioMaxReproduct}");
     }
     Console.WriteLine($"Unemployed: {city.CitizensStats?.Unemployed}");
-    Console.WriteLine($"Workers: {city.CitizensStats?.Workers}");
-    Console.WriteLine($"Scientists: {city.CitizensStats?.Scientists}");
-    Console.WriteLine($"Soldiers: {city.CitizensStats?.Soldiers}");
-    Console.WriteLine($"Ingeniers: {city.CitizensStats?.Ingeniers}");
+    Console.WriteLine($"Workers: {city.CitizensStats?.EmployementRatioAndEmployed[0].numberOfEmployed}");
+    Console.WriteLine($"Scientists: {city.CitizensStats?.EmployementRatioAndEmployed[1].numberOfEmployed}");
+    Console.WriteLine($"Soldiers: {city.CitizensStats?.EmployementRatioAndEmployed[2].numberOfEmployed}");
+    Console.WriteLine($"Ingeniers: {city.CitizensStats?.EmployementRatioAndEmployed[3].numberOfEmployed}");
 
     Console.WriteLine("");
     Console.WriteLine("          City Traits         ");
